@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Мой дашборд</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <button class="hamburger" id="hamburger" aria-label="Меню">
+    <span></span><span></span><span></span>
+  </button>
+  <div class="sidebar-overlay hidden" id="sidebar-overlay"></div>
+
+  <div class="sidebar" id="sidebar">
+    <div class="logo"><span class="logo-dot"></span>Мой мир</div>
+    <nav>
+      <button class="nav-btn active" data-tab="goals">🎯 Цели</button>
+      <button class="nav-btn" data-tab="plans">📋 Планы</button>
+      <button class="nav-btn" data-tab="notes">📝 Заметки</button>
+      <button class="nav-btn" data-tab="done">✅ Сделано</button>
+      <button class="nav-btn" data-tab="dump">⚡ Выгрузка</button>
+      <div class="sidebar-divider"></div>
+      <button class="nav-btn" data-tab="obsidian">🟣 Obsidian</button>
+    </nav>
+    <div class="sidebar-footer">
+      <span id="total-count">0 записей</span>
+    </div>
+  </div>
+
+  <div class="main">
+    <header class="topbar">
+      <h1 id="tab-title">Цели</h1>
+      <div class="topbar-actions">
+        <input type="text" id="search-input" placeholder="Поиск..." />
+        <div class="category-filter-wrap">
+          <select id="category-filter"><option value="">Все категории</option></select>
+          <button class="btn-cat-manage" id="open-cat-manager" title="Управление категориями">⚙</button>
+        </div>
+        <button class="btn-add" id="open-modal">+ Добавить</button>
+      </div>
+    </header>
+
+    <div class="content">
+      <div id="items-grid" class="items-grid"></div>
+      <div id="empty-state" class="empty-state hidden">
+        <span class="empty-icon">🗂️</span>
+        <p>Пока ничего нет. Добавь первую запись!</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Панель Выгрузка -->
+  <div id="dump-panel" class="dump-panel hidden">
+    <div class="dump-header">
+      <div>
+        <h1>⚡ Выгрузка</h1>
+        <p class="dump-hint">Пиши всё подряд — каждая строка станет отдельным пунктом</p>
+      </div>
+      <button class="btn-add" id="dump-parse-btn">Разбить на пункты</button>
+    </div>
+    <div class="dump-workspace">
+      <div class="dump-input-col">
+        <textarea id="dump-textarea" placeholder="Напиши здесь всё, что на уме...
+Позвонить врачу
+Купить книжку по философии
+Сдать отчёт на проекте"></textarea>
+        <div id="dump-preview" class="dump-preview hidden"></div>
+      </div>
+      <div class="dump-items-col" id="dump-items-col">
+        <div class="dump-empty-hint">Введи текст → нажми «Разбить»</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Obsidian панель -->
+  <div id="obsidian-panel" class="obsidian-panel hidden">
+    <div class="obs-header">
+      <div class="obs-vault-info">
+        <span id="obs-vault-name">Vault не выбран</span>
+      </div>
+      <div class="obs-actions">
+        <button class="btn-obs-secondary" id="obs-connect">📂 Выбрать vault</button>
+        <button class="btn-obs-secondary hidden" id="obs-analyze">🔍 Анализ</button>
+        <button class="btn-obs-primary hidden" id="obs-new-note">+ Новая заметка</button>
+      </div>
+    </div>
+    <div id="obs-browser" class="obs-browser">
+      <div class="obs-connect-prompt">
+        <div class="empty-icon">🟣</div>
+        <p>Выбери папку своего Obsidian vault'а</p>
+        <p class="obs-hint">Работает в Chrome и Edge</p>
+        <button class="btn-add" id="obs-connect-big">Подключить Obsidian</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Модальное окно -->
+  <div class="modal-overlay hidden" id="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="modal-title">Новая запись</h2>
+        <button class="modal-close" id="modal-close">✕</button>
+      </div>
+      <div class="modal-body">
+        <label>Заголовок</label>
+        <input type="text" id="input-title" placeholder="Введи заголовок..." />
+
+        <label>Описание</label>
+        <textarea id="input-desc" placeholder="Подробности, мысли, детали..."></textarea>
+
+        <label>Категория</label>
+        <input type="text" id="input-category" placeholder="Например: работа, здоровье, идеи..." list="category-suggestions" />
+        <datalist id="category-suggestions"></datalist>
+
+        <label id="priority-label">Приоритет</label>
+        <div class="priority-btns">
+          <button class="priority-btn active" data-priority="normal">Обычный</button>
+          <button class="priority-btn" data-priority="medium">Важный</button>
+          <button class="priority-btn" data-priority="high">Срочный</button>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-cancel" id="modal-cancel">Отмена</button>
+        <button class="btn-save" id="modal-save">Сохранить</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Модалка: новая заметка в Obsidian -->
+  <div class="modal-overlay hidden" id="obs-modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Новая заметка в Obsidian</h2>
+        <button class="modal-close" id="obs-modal-close">✕</button>
+      </div>
+      <div class="modal-body">
+        <label>Название файла</label>
+        <input type="text" id="obs-input-name" placeholder="Название заметки..." />
+        <label>Содержимое</label>
+        <textarea id="obs-input-content" placeholder="Текст заметки (Markdown)..." style="min-height:160px"></textarea>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-cancel" id="obs-modal-cancel">Отмена</button>
+        <button class="btn-save" id="obs-modal-save">Создать файл</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Модалка: анализ vault'а -->
+  <div class="modal-overlay hidden" id="analyze-modal-overlay">
+    <div class="modal analyze-modal">
+      <div class="modal-header">
+        <h2>🔍 Анализ заметок</h2>
+        <button class="modal-close" id="analyze-modal-close">✕</button>
+      </div>
+      <div class="analyze-body" id="analyze-body">
+        <div class="analyze-loading">Анализирую заметки...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Менеджер категорий -->
+  <div class="modal-overlay hidden" id="cat-manager-overlay">
+    <div class="modal cat-manager-modal">
+      <div class="modal-header">
+        <h2>⚙ Категории</h2>
+        <button class="modal-close" id="cat-manager-close">✕</button>
+      </div>
+      <div class="cat-manager-body">
+        <div class="cat-add-row">
+          <input type="text" id="cat-new-input" placeholder="Новая категория..." />
+          <button class="btn-save" id="cat-add-btn">Добавить</button>
+        </div>
+        <div id="cat-list" class="cat-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="telegram.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="app.js"></script>
+  <script src="obsidian.js"></script>
+  <script src="analyze.js"></script>
+</body>
+</html>
