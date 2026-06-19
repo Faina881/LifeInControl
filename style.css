@@ -201,6 +201,7 @@ nav {
   background: var(--card-bg);
   border: 1px solid var(--border);
   color: var(--text);
+  -webkit-text-fill-color: var(--text);
   padding: 8px 14px 8px 36px;
   border-radius: 10px;
   font-size: 0.88rem;
@@ -249,6 +250,7 @@ nav {
   background: var(--card-bg);
   border: 1px solid var(--border);
   color: var(--text-secondary);
+  -webkit-text-fill-color: var(--text-secondary);
   padding: 8px 12px;
   border-radius: 10px;
   font-size: 0.88rem;
@@ -586,7 +588,7 @@ nav {
 
 .modal-body input,
 .modal-body textarea {
-  background: rgba(255,255,255,0.03);
+  background: var(--card-bg);
   border: 1px solid var(--border-light);
   color: var(--text);
   padding: 10px 14px;
@@ -595,6 +597,14 @@ nav {
   outline: none;
   font-family: inherit;
   transition: all 0.2s;
+  -webkit-text-fill-color: var(--text);
+}
+
+.modal-body input::placeholder,
+.modal-body textarea::placeholder {
+  color: var(--text-muted);
+  opacity: 1;
+  -webkit-text-fill-color: var(--text-muted);
 }
 
 .modal-body input:focus,
@@ -1174,6 +1184,7 @@ nav {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   color: var(--text);
+  -webkit-text-fill-color: var(--text);
   font-size: 0.95rem;
   line-height: 1.7;
   padding: 16px 18px;

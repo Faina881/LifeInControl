@@ -283,6 +283,10 @@ function switchTab(tab) {
   document.getElementById('tab-title').textContent = TAB_TITLES[tab];
   document.getElementById('search-input').value = '';
   selectedCategoryFilter = '';
+
+  const isNotes = tab === 'notes';
+  document.querySelector('.category-filter-wrap').style.display = isNotes ? '' : 'none';
+
   renderItems();
 }
 
@@ -330,6 +334,7 @@ document.addEventListener('keydown', (e) => {
 async function init() {
   await ensureCache();
   syncCategoryFromCards();
+  document.querySelector('.category-filter-wrap').style.display = 'none';
   renderItems();
   const user = window.getTelegramUser?.();
   if (user) {
