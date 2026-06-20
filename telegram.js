@@ -10,15 +10,8 @@ if (IS_TG) {
 }
 
 function applyTelegramTheme() {
-  if (!IS_TG) return;
-  const c = TG.themeParams;
-  const root = document.documentElement;
-  if (c.bg_color)           root.style.setProperty('--bg',          c.bg_color);
-  if (c.secondary_bg_color) root.style.setProperty('--sidebar-bg',  c.secondary_bg_color);
-  if (c.text_color)         root.style.setProperty('--text',         c.text_color);
-  if (c.hint_color)         root.style.setProperty('--text-muted',   c.hint_color);
-  if (c.button_color)       root.style.setProperty('--accent',       c.button_color);
-  if (c.button_text_color)  root.style.setProperty('--text-on-accent', c.button_text_color);
+  // Намеренно не применяем тему Telegram — используем свою палитру
+  // чтобы текст всегда был виден на тёмном фоне
 }
 
 // ===== CLOUD STORAGE HELPERS =====

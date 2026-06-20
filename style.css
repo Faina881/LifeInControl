@@ -4,6 +4,19 @@
   box-sizing: border-box;
 }
 
+input, textarea, select {
+  color: #e6edf3 !important;
+  -webkit-text-fill-color: #e6edf3 !important;
+  background-color: #161b22 !important;
+  caret-color: #58a6ff;
+}
+
+input::placeholder, textarea::placeholder {
+  color: #6e7681 !important;
+  -webkit-text-fill-color: #6e7681 !important;
+  opacity: 1;
+}
+
 :root {
   --bg: #0d1117;
   --sidebar-bg: #010409;
