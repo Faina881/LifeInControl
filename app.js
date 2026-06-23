@@ -873,14 +873,36 @@ async function sendAllPending() {
 }
 
 async function removeDumpItem(id) {
-  await saveDumpItems(loadDumpItems().filter(i => i.id !== id));
+  const filtered = loadDumpItems().filter(i => i.id !== id);
+  _cache[DUMP_KEY] = filtered;
   renderDump();
+  try {
+    await saveDumpItems(filtered);
+  } catch (e) {
+    console.error('Ошибка удаления пункта', e);
+  }
 }
 
-async function clearDump() {
-  if (!confirm('Очистить весь список выгрузки?')) return;
-  await saveDumpItems([]);
+async function doClearDump() {
+  _cache[DUMP_KEY] = [];
   renderDump();
+  showDumpToast('Список очищен');
+  try {
+    await saveDumpItems([]);
+  } catch (e) {
+    console.error('Ошибка очистки выгрузки', e);
+  }
+}
+
+function clearDump() {
+  const tg = window.Telegram?.WebApp;
+  if (tg?.showConfirm) {
+    tg.showConfirm('Очистить весь список выгрузки?', (ok) => {
+      if (ok) doClearDump();
+    });
+  } else if (confirm('Очистить весь список выгрузки?')) {
+    doClearDump();
+  }
 }
 
 document.getElementById('dump-parse-btn').addEventListener('click', async () => {
