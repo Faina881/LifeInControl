@@ -1,5 +1,6 @@
 const STORAGE_KEY = 'dashboard_data';
 const CATEGORIES_KEY = 'dashboard_categories';
+const LIFE_AREAS_KEY = 'dashboard_life_areas';
 
 const TAB_TITLES = {
   goals: 'Цели',
@@ -12,6 +13,7 @@ const TAB_TITLES = {
 let currentTab = 'goals';
 let editingId = null;
 let selectedPriority = 'normal';
+let selectedStatus = 'not_started';
 let selectedCategoryFilter = '';
 
 // ===== IN-MEMORY CACHE (async storage abstr.) =====
@@ -23,6 +25,7 @@ async function ensureCache() {
   const getter = window.storageGet || ((k) => Promise.resolve(JSON.parse(localStorage.getItem(k))));
   _cache[STORAGE_KEY]    = (await getter(STORAGE_KEY))    || {};
   _cache[CATEGORIES_KEY] = (await getter(CATEGORIES_KEY)) || [];
+  _cache[LIFE_AREAS_KEY] = (await getter(LIFE_AREAS_KEY)) || ['Здоровье', 'Карьера', 'Семья', 'Финансы', 'Саморазвитие', 'Отдых'];
   _cache['dashboard_dump'] = (await getter('dashboard_dump')) || [];
   _cacheReady = true;
 }
@@ -40,6 +43,16 @@ function loadCategories() {
 async function saveCategories(cats) {
   _cache[CATEGORIES_KEY] = cats;
   await persistKey(CATEGORIES_KEY);
+}
+
+// ===== LIFE AREAS STORAGE =====
+function loadLifeAreas() {
+  return _cache[LIFE_AREAS_KEY] || ['Здоровье', 'Карьера', 'Семья', 'Финансы', 'Саморазвитие', 'Отдых'];
+}
+
+async function saveLifeAreas(areas) {
+  _cache[LIFE_AREAS_KEY] = areas;
+  await persistKey(LIFE_AREAS_KEY);
 }
 
 // ===== DATA =====
@@ -98,6 +111,133 @@ function updateCategoryFilter() {
   if (datalist) datalist.innerHTML = cats.map(c => `<option value="${escHtml(c)}"></option>`).join('');
 }
 
+function updateLifeAreaSelect() {
+  const sel = document.getElementById('input-life-area');
+  if (!sel) return;
+  const areas = loadLifeAreas();
+  const prev = Array.from(sel.selectedOptions).map(o => o.value);
+  sel.innerHTML = areas.map(a => `<option value="${escHtml(a)}" ${prev.includes(a) ? 'selected' : ''}>${escHtml(a)}</option>`).join('');
+}
+
+function openLifeAreaManager() {
+  document.getElementById('life-area-manager-overlay').classList.remove('hidden');
+  document.getElementById('life-area-new-input').value = '';
+  renderLifeAreaList();
+  document.getElementById('life-area-new-input').focus();
+}
+
+function closeLifeAreaManager() {
+  document.getElementById('life-area-manager-overlay').classList.add('hidden');
+  updateLifeAreaSelect();
+}
+
+async function addLifeArea() {
+  const input = document.getElementById('life-area-new-input');
+  const name = input.value.trim();
+  if (!name) return;
+  const areas = loadLifeAreas();
+  if (areas.map(a => a.toLowerCase()).includes(name.toLowerCase())) {
+    input.style.borderColor = 'var(--warning)';
+    setTimeout(() => input.style.borderColor = '', 1000);
+    return;
+  }
+  areas.push(name);
+  areas.sort((a, b) => a.localeCompare(b, 'ru'));
+  await saveLifeAreas(areas);
+  input.value = '';
+  renderLifeAreaList();
+  updateLifeAreaSelect();
+}
+
+function renderLifeAreaList() {
+  const list = document.getElementById('life-area-list');
+  const areas = loadLifeAreas();
+  list.innerHTML = areas.map((a, idx) => `
+    <div class="cat-item">
+      <span class="cat-item-name">${escHtml(a)}</span>
+      <div class="cat-item-actions">
+        <button class="cat-item-btn" onclick="editLifeArea(${idx})">✎</button>
+        <button class="cat-item-btn delete" onclick="deleteLifeArea(${idx})">✕</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function editLifeArea(idx) {
+  const areas = loadLifeAreas();
+  const name = areas[idx];
+  const list = document.getElementById('life-area-list');
+  list.innerHTML = areas.map((a, i) => i === idx ? `
+    <div class="cat-item">
+      <input type="text" class="cat-item-input" id="life-area-input-${i}" value="${escHtml(a)}" />
+      <div class="cat-item-actions">
+        <button class="cat-item-btn" onclick="saveEditLifeArea(${i})">✓</button>
+        <button class="cat-item-btn delete" onclick="renderLifeAreaList()">✕</button>
+      </div>
+    </div>
+  ` : `
+    <div class="cat-item">
+      <span class="cat-item-name">${escHtml(a)}</span>
+      <div class="cat-item-actions">
+        <button class="cat-item-btn" onclick="editLifeArea(${i})">✎</button>
+        <button class="cat-item-btn delete" onclick="deleteLifeArea(${i})">✕</button>
+      </div>
+    </div>
+  `).join('');
+  document.getElementById(`life-area-input-${idx}`).focus();
+}
+
+async function saveEditLifeArea(idx) {
+  const input = document.getElementById(`life-area-input-${idx}`);
+  const newName = input.value.trim();
+  if (!newName) return;
+  const areas = loadLifeAreas();
+  const oldName = areas[idx];
+  if (newName === oldName) { renderLifeAreaList(); return; }
+  if (areas.map(a => a.toLowerCase()).includes(newName.toLowerCase())) {
+    input.style.borderColor = 'var(--warning)';
+    setTimeout(() => input.style.borderColor = '', 1000);
+    return;
+  }
+  areas[idx] = newName;
+  areas.sort((a, b) => a.localeCompare(b, 'ru'));
+  await saveLifeAreas(areas);
+  const data = loadData();
+  Object.keys(data).forEach(tab => {
+    if (Array.isArray(data[tab])) {
+      data[tab].forEach(item => {
+        if (item.lifeAreas) {
+          item.lifeAreas = item.lifeAreas.map(a => a === oldName ? newName : a);
+        }
+      });
+    }
+  });
+  await saveData(data);
+  renderLifeAreaList();
+  updateLifeAreaSelect();
+  renderItems(document.getElementById('search-input').value);
+}
+
+async function deleteLifeArea(idx) {
+  const areas = loadLifeAreas();
+  const name = areas[idx];
+  if (!confirm(`Удалить сферу жизни «${name}»?`)) return;
+  areas.splice(idx, 1);
+  await saveLifeAreas(areas);
+  const data = loadData();
+  Object.keys(data).forEach(tab => {
+    if (Array.isArray(data[tab])) {
+      data[tab].forEach(item => {
+        if (item.lifeAreas) item.lifeAreas = item.lifeAreas.filter(a => a !== name);
+      });
+    }
+  });
+  await saveData(data);
+  renderLifeAreaList();
+  updateLifeAreaSelect();
+  renderItems(document.getElementById('search-input').value);
+}
+
 function renderItems(filter = '') {
   const grid = document.getElementById('items-grid');
   const emptyState = document.getElementById('empty-state');
@@ -127,10 +267,12 @@ function renderItems(filter = '') {
 
   emptyState.classList.add('hidden');
 
-  grid.innerHTML = items.map(item => `
+  const showNumbers = currentTab === 'goals';
+
+  grid.innerHTML = items.map((item, idx) => `
     <div class="card ${item.done ? 'is-done' : ''}" data-id="${item.id}">
       <div class="card-header">
-        <div class="card-title">${escHtml(item.title)}</div>
+        <div class="card-title">${showNumbers ? `<span class="goal-number">${idx + 1}.</span> ` : ''}${escHtml(item.title)}</div>
         <div class="card-actions">
           ${currentTab !== 'done' ? `<button class="card-btn done-btn" title="Отметить как сделано" onclick="markDone('${item.id}')">✓</button>` : ''}
           <button class="card-btn edit-btn" title="Редактировать" onclick="openEdit('${item.id}')">✎</button>
@@ -138,6 +280,16 @@ function renderItems(filter = '') {
         </div>
       </div>
       ${item.category && currentTab === 'notes' ? `<div class="card-category">🏷 ${escHtml(item.category)}</div>` : ''}
+      ${item.lifeAreas?.length ? `<div class="life-area-tags">${item.lifeAreas.map(a => `<span class="life-area-tag">${escHtml(a)}</span>`).join('')}</div>` : ''}
+      ${currentTab === 'goals' ? `
+        <div class="goal-meta">
+          ${item.status ? `<span class="status-badge ${item.status}">${STATUS_LABELS[item.status]}</span>` : ''}
+          ${item.startDate ? `<span class="meta-date">🚀 ${formatDateShort(item.startDate)}</span>` : ''}
+          ${item.dueDate ? `<span class="meta-date">📅 ${formatDateShort(item.dueDate)}</span>` : ''}
+        </div>
+        ${item.metric ? `<div class="metric">🎯 ${escHtml(item.metric)}</div>` : ''}
+      ` : ''}
+      ${item.dueDate && currentTab !== 'goals' ? `<div class="due-date">📅 ${formatDateShort(item.dueDate)}</div>` : ''}
       ${item.desc ? `<div class="card-desc">${escHtml(item.desc)}</div>` : ''}
       <div class="card-footer">
         <span class="card-date">${formatDate(item.createdAt)}</span>
@@ -145,6 +297,11 @@ function renderItems(filter = '') {
       </div>
     </div>
   `).join('');
+}
+
+function formatDateShort(iso) {
+  const d = new Date(iso + 'T00:00:00');
+  return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
 }
 
 function priorityLabel(p) {
@@ -186,10 +343,18 @@ function openEdit(id) {
   if (!item) return;
 
   editingId = id;
-  document.getElementById('modal-title').textContent = 'Редактировать';
+  document.getElementById('modal-title').textContent = currentTab === 'goals' ? 'Редактировать цель' : 'Редактировать';
   document.getElementById('input-title').value = item.title;
   document.getElementById('input-desc').value = item.desc || '';
   document.getElementById('input-category').value = item.category || '';
+  document.getElementById('input-due-date').value = item.dueDate || '';
+  document.getElementById('input-start-date').value = item.startDate || '';
+  document.getElementById('input-metric').value = item.metric || '';
+  setActiveStatus(item.status || 'not_started');
+  updateLifeAreaSelect();
+  Array.from(document.getElementById('input-life-area').options).forEach(o => {
+    o.selected = (item.lifeAreas || []).includes(o.value);
+  });
   setActivePriority(item.priority || 'normal');
   openModal();
 }
@@ -198,8 +363,23 @@ function openEdit(id) {
 function openModal() {
   document.getElementById('modal-overlay').classList.remove('hidden');
   const isNotes = currentTab === 'notes';
+  const isGoals = currentTab === 'goals';
   document.querySelector('.priority-btns').style.display = isNotes ? 'none' : '';
   document.getElementById('priority-label').style.display = isNotes ? 'none' : '';
+  document.getElementById('status-btns').style.display = isGoals ? '' : 'none';
+  document.getElementById('status-label').style.display = isGoals ? '' : 'none';
+  document.getElementById('input-start-date').style.display = isGoals ? '' : 'none';
+  document.getElementById('input-start-date').previousElementSibling.style.display = isGoals ? '' : 'none';
+  document.getElementById('input-metric').style.display = isGoals ? '' : 'none';
+  document.getElementById('input-metric').previousElementSibling.style.display = isGoals ? '' : 'none';
+  updateLifeAreaSelect();
+  setActiveStatus('not_started');
+  if (isGoals) {
+    const nextNumber = getItems('goals').length + 1;
+    document.getElementById('modal-title').textContent = `Цель №${nextNumber}`;
+  } else {
+    document.getElementById('modal-title').textContent = 'Новая запись';
+  }
   document.getElementById('input-title').focus();
 }
 
@@ -208,7 +388,12 @@ function closeModal() {
   document.getElementById('input-title').value = '';
   document.getElementById('input-desc').value = '';
   document.getElementById('input-category').value = '';
+  document.getElementById('input-due-date').value = '';
+  document.getElementById('input-start-date').value = '';
+  document.getElementById('input-metric').value = '';
+  document.getElementById('input-life-area').selectedIndex = -1;
   setActivePriority('normal');
+  setActiveStatus('not_started');
   editingId = null;
   document.getElementById('modal-title').textContent = 'Новая запись';
 }
@@ -219,6 +404,20 @@ function setActivePriority(p) {
     btn.classList.toggle('active', btn.dataset.priority === p);
   });
 }
+
+function setActiveStatus(s) {
+  selectedStatus = s;
+  document.querySelectorAll('.status-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.status === s);
+  });
+}
+
+const STATUS_LABELS = {
+  not_started: 'Не начато',
+  in_progress: 'В процессе',
+  paused: 'Пауза',
+  done: 'Выполнено',
+};
 
 async function saveItem() {
   const title = document.getElementById('input-title').value.trim();
@@ -231,10 +430,15 @@ async function saveItem() {
 
   const desc = document.getElementById('input-desc').value.trim();
   const category = document.getElementById('input-category').value.trim();
+  const dueDate = document.getElementById('input-due-date').value;
+  const startDate = document.getElementById('input-start-date').value;
+  const metric = document.getElementById('input-metric').value.trim();
+  const lifeAreas = Array.from(document.getElementById('input-life-area').selectedOptions)
+    .map(o => o.value).filter(Boolean);
   let items = getItems(currentTab);
 
   if (editingId) {
-    items = items.map(i => i.id === editingId ? { ...i, title, desc, category, priority: selectedPriority } : i);
+    items = items.map(i => i.id === editingId ? { ...i, title, desc, category, priority: selectedPriority, dueDate, startDate, status: selectedStatus, metric, lifeAreas } : i);
   } else {
     items.unshift({
       id: Date.now().toString(),
@@ -242,6 +446,11 @@ async function saveItem() {
       desc,
       category,
       priority: selectedPriority,
+      dueDate,
+      startDate,
+      status: selectedStatus,
+      metric,
+      lifeAreas,
       createdAt: Date.now(),
       done: false,
     });
@@ -272,6 +481,7 @@ function switchTab(tab) {
   if (tab === 'dump') {
     mainEl.style.display = 'none';
     dumpPanel.classList.remove('hidden');
+    initDumpEditor();
     return;
   }
   if (tab === 'obsidian') {
@@ -312,6 +522,10 @@ document.querySelectorAll('.priority-btn').forEach(btn => {
   btn.addEventListener('click', () => setActivePriority(btn.dataset.priority));
 });
 
+document.querySelectorAll('.status-btn').forEach(btn => {
+  btn.addEventListener('click', () => setActiveStatus(btn.dataset.status));
+});
+
 document.getElementById('search-input').addEventListener('input', (e) => {
   renderItems(e.target.value);
 });
@@ -336,6 +550,7 @@ async function init() {
   syncCategoryFromCards();
   document.querySelector('.category-filter-wrap').style.display = 'none';
   renderItems();
+  initDumpEditor();
   const user = window.getTelegramUser?.();
   if (user) {
     const footer = document.getElementById('total-count');
@@ -473,6 +688,7 @@ async function deleteCat(idx) {
 
 // ===== DUMP PANEL =====
 const DUMP_KEY = 'dashboard_dump';
+const DUMP_DRAFT_KEY = 'dashboard_dump_draft';
 
 function loadDumpItems() {
   return _cache[DUMP_KEY] || [];
@@ -483,10 +699,39 @@ async function saveDumpItems(items) {
   await setter(DUMP_KEY, items);
 }
 
+function getDumpText() {
+  const text = document.getElementById('dump-textarea').value || '';
+  return text.split('\n').map(l => l.trim()).filter(Boolean);
+}
+
+function setDumpEditor(text) {
+  const el = document.getElementById('dump-textarea');
+  el.value = text || '';
+  updateDumpLineNumbers();
+}
+
+function updateDumpLineNumbers() {
+  const ta = document.getElementById('dump-textarea');
+  const nums = document.getElementById('dump-line-numbers');
+  if (!ta || !nums) return;
+  const count = Math.max(1, (ta.value || '').split('\n').length);
+  nums.innerHTML = Array.from({ length: count }, (_, i) => `<div>${i + 1}.</div>`).join('');
+}
+
+function showDumpToast(msg) {
+  const toast = document.getElementById('dump-toast');
+  if (!toast) return;
+  toast.textContent = msg;
+  toast.classList.remove('hidden');
+  setTimeout(() => toast.classList.add('hidden'), 2000);
+}
+
 async function parseDump() {
-  const text = document.getElementById('dump-textarea').value;
-  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
-  if (!lines.length) return;
+  const lines = getDumpText();
+  if (!lines.length) {
+    showDumpToast('Введите текст');
+    return;
+  }
 
   const existing = loadDumpItems();
   const newItems = lines.map(line => ({
@@ -494,9 +739,41 @@ async function parseDump() {
     text: line,
     done: false,
   }));
-  await saveDumpItems([...existing, ...newItems]);
+  const all = [...existing, ...newItems];
+
+  // 1) Сразу обновляем интерфейс (синхронно)
+  _cache[DUMP_KEY] = all;
   document.getElementById('dump-textarea').value = '';
+  updateDumpLineNumbers();
   renderDump();
+  showDumpToast(`Добавлено ${newItems.length} пунктов`);
+
+  // 2) Затем сохраняем в хранилище (асинхронно)
+  try {
+    await saveDumpItems(all);
+    await saveDraft('');
+  } catch (e) {
+    console.error('Ошибка сохранения выгрузки', e);
+  }
+}
+
+async function saveDraft(text) {
+  const setter = window.storageSet || ((k, v) => { localStorage.setItem(k, JSON.stringify(v)); return Promise.resolve(); });
+  await setter(DUMP_DRAFT_KEY, text);
+}
+
+async function loadDraft() {
+  const getter = window.storageGet || ((k) => Promise.resolve(JSON.parse(localStorage.getItem(k))));
+  return (await getter(DUMP_DRAFT_KEY)) || '';
+}
+
+function initDumpEditor() {
+  const el = document.getElementById('dump-textarea');
+  if (!el) return;
+  loadDraft().then(text => {
+    el.value = (text && text.trim()) ? text : '';
+    updateDumpLineNumbers();
+  });
 }
 
 function renderDump() {
@@ -504,7 +781,7 @@ function renderDump() {
   const items = loadDumpItems();
 
   if (!items.length) {
-    col.innerHTML = '<div class="dump-empty-hint">Введи текст → нажми «Разбить»</div>';
+    col.innerHTML = '<div class="dump-empty-hint">Список пуст</div>';
     return;
   }
 
@@ -521,6 +798,7 @@ function renderDump() {
     <div class="dump-list">
       ${items.map((item, idx) => `
         <div class="dump-item ${item.done ? 'dump-item-sent' : ''}" data-id="${item.id}">
+          <div class="dump-item-number">${idx + 1}.</div>
           <div class="dump-item-text">${escHtml(item.text)}</div>
           <div class="dump-item-controls">
             ${!item.done ? `
@@ -605,37 +883,24 @@ async function clearDump() {
   renderDump();
 }
 
-function updateDumpPreview() {
-  const text = document.getElementById('dump-textarea').value;
-  const preview = document.getElementById('dump-preview');
-  const lines = text.split('\n');
-
-  const hasContent = lines.some(l => l.trim());
-  if (!hasContent) {
-    preview.classList.add('hidden');
-    return;
-  }
-
-  preview.classList.remove('hidden');
-  preview.innerHTML = lines.map((line, idx) => {
-    const trimmed = line.trim();
-    if (!trimmed) return `<div class="dump-preview-gap"></div>`;
-    return `<div class="dump-preview-item">
-      <span class="dump-preview-num">${idx + 1}</span>
-      <span class="dump-preview-text">${escHtml(trimmed)}</span>
-    </div>`;
-  }).join('');
-}
-
-document.getElementById('dump-parse-btn').addEventListener('click', () => {
-  parseDump();
-  document.getElementById('dump-preview').classList.add('hidden');
+document.getElementById('dump-parse-btn').addEventListener('click', async () => {
+  await parseDump();
 });
-document.getElementById('dump-textarea').addEventListener('input', updateDumpPreview);
+
+document.getElementById('dump-textarea').addEventListener('input', () => {
+  saveDraft(document.getElementById('dump-textarea').value);
+  updateDumpLineNumbers();
+});
+
+document.getElementById('dump-textarea').addEventListener('scroll', () => {
+  const ta = document.getElementById('dump-textarea');
+  const nums = document.getElementById('dump-line-numbers');
+  if (nums) nums.scrollTop = ta.scrollTop;
+});
+
 document.getElementById('dump-textarea').addEventListener('keydown', (e) => {
   if (e.ctrlKey && e.key === 'Enter') {
-    parseDump();
-    document.getElementById('dump-preview').classList.add('hidden');
+    document.getElementById('dump-parse-btn').click();
   }
 });
 
@@ -647,6 +912,16 @@ document.getElementById('cat-manager-overlay').addEventListener('click', (e) => 
 document.getElementById('cat-add-btn').addEventListener('click', addCategory);
 document.getElementById('cat-new-input').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') addCategory();
+});
+
+document.getElementById('open-life-area-manager').addEventListener('click', openLifeAreaManager);
+document.getElementById('life-area-manager-close').addEventListener('click', closeLifeAreaManager);
+document.getElementById('life-area-manager-overlay').addEventListener('click', (e) => {
+  if (e.target === e.currentTarget) closeLifeAreaManager();
+});
+document.getElementById('life-area-add-btn').addEventListener('click', addLifeArea);
+document.getElementById('life-area-new-input').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') addLifeArea();
 });
 
 // ===== MOBILE SIDEBAR =====

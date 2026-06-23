@@ -56,23 +56,25 @@
 
   <!-- Панель Выгрузка -->
   <div id="dump-panel" class="dump-panel hidden">
+    <div id="dump-toast" class="dump-toast hidden"></div>
     <div class="dump-header">
       <div>
         <h1>⚡ Выгрузка</h1>
-        <p class="dump-hint">Пиши всё подряд — каждая строка станет отдельным пунктом</p>
       </div>
-      <button class="btn-add" id="dump-parse-btn">Разбить на пункты</button>
     </div>
     <div class="dump-workspace">
       <div class="dump-input-col">
-        <textarea id="dump-textarea" placeholder="Напиши здесь всё, что на уме...
+        <div class="dump-textarea-wrap">
+          <div class="dump-line-numbers" id="dump-line-numbers">1</div>
+          <textarea id="dump-textarea" placeholder="Напиши здесь всё, что на уме...
 Позвонить врачу
 Купить книжку по философии
 Сдать отчёт на проекте"></textarea>
-        <div id="dump-preview" class="dump-preview hidden"></div>
+        </div>
+        <button class="btn-add" id="dump-parse-btn">Добавить</button>
       </div>
       <div class="dump-items-col" id="dump-items-col">
-        <div class="dump-empty-hint">Введи текст → нажми «Разбить»</div>
+        <div class="dump-empty-hint">Список пуст</div>
       </div>
     </div>
   </div>
@@ -116,6 +118,31 @@
         <label>Категория</label>
         <input type="text" id="input-category" placeholder="Например: работа, здоровье, идеи..." list="category-suggestions" />
         <datalist id="category-suggestions"></datalist>
+
+        <label>Сфера жизни</label>
+        <div class="life-areas-wrap">
+          <select id="input-life-area" multiple>
+            <option value="">Выбери сферы...</option>
+          </select>
+          <button type="button" class="btn-life-area-manage" id="open-life-area-manager" title="Настроить сферы">⚙</button>
+        </div>
+
+        <label>Срок</label>
+        <input type="date" id="input-due-date" />
+
+        <label>Дата начала</label>
+        <input type="date" id="input-start-date" />
+
+        <label id="status-label">Статус</label>
+        <div class="status-btns" id="status-btns">
+          <button class="status-btn active" data-status="not_started">Не начато</button>
+          <button class="status-btn" data-status="in_progress">В процессе</button>
+          <button class="status-btn" data-status="paused">Пауза</button>
+          <button class="status-btn" data-status="done">Выполнено</button>
+        </div>
+
+        <label id="metric-label">Метрика успеха</label>
+        <input type="text" id="input-metric" placeholder="Например: пробежать 5 км, прочитать 3 книги..." />
 
         <label id="priority-label">Приоритет</label>
         <div class="priority-btns">
@@ -177,6 +204,23 @@
           <button class="btn-save" id="cat-add-btn">Добавить</button>
         </div>
         <div id="cat-list" class="cat-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Менеджер сфер жизни -->
+  <div class="modal-overlay hidden" id="life-area-manager-overlay">
+    <div class="modal cat-manager-modal">
+      <div class="modal-header">
+        <h2>⚙ Сферы жизни</h2>
+        <button class="modal-close" id="life-area-manager-close">✕</button>
+      </div>
+      <div class="cat-manager-body">
+        <div class="cat-add-row">
+          <input type="text" id="life-area-new-input" placeholder="Новая сфера жизни..." />
+          <button class="btn-save" id="life-area-add-btn">Добавить</button>
+        </div>
+        <div id="life-area-list" class="cat-list"></div>
       </div>
     </div>
   </div>
