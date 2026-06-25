@@ -1,6 +1,7 @@
 const STORAGE_KEY = 'dashboard_data';
 const CATEGORIES_KEY = 'dashboard_categories';
 const LIFE_AREAS_KEY = 'dashboard_life_areas';
+const PLAN_PAGES_KEY = 'dashboard_plan_pages';
 
 const TAB_TITLES = {
   goals: 'Цели',
@@ -15,6 +16,7 @@ let editingId = null;
 let selectedPriority = 'normal';
 let selectedStatus = 'not_started';
 let selectedCategoryFilter = '';
+let currentPlanPageId = null;
 
 // ===== IN-MEMORY CACHE (async storage abstr.) =====
 let _cache = {};         // { dashboard_data: {...}, dashboard_categories: [...] }
@@ -27,6 +29,7 @@ async function ensureCache() {
   _cache[CATEGORIES_KEY] = (await getter(CATEGORIES_KEY)) || [];
   _cache[LIFE_AREAS_KEY] = (await getter(LIFE_AREAS_KEY)) || ['Здоровье', 'Карьера', 'Семья', 'Финансы', 'Саморазвитие', 'Отдых'];
   _cache['dashboard_dump'] = (await getter('dashboard_dump')) || [];
+  _cache[PLAN_PAGES_KEY] = (await getter(PLAN_PAGES_KEY)) || [];
   _cacheReady = true;
 }
 
@@ -53,6 +56,110 @@ function loadLifeAreas() {
 async function saveLifeAreas(areas) {
   _cache[LIFE_AREAS_KEY] = areas;
   await persistKey(LIFE_AREAS_KEY);
+}
+
+// ===== PLAN PAGES STORAGE =====
+const MONTH_NAMES = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+const WEEKDAY_NAMES = ['Понедельник','Вторник','Среда','Четверг','Пятница','Суббота','Воскресенье'];
+
+function loadPlanPages() {
+  return _cache[PLAN_PAGES_KEY] || [];
+}
+
+async function savePlanPages(pages) {
+  _cache[PLAN_PAGES_KEY] = pages;
+  await persistKey(PLAN_PAGES_KEY);
+}
+
+function getPlanPage(id) {
+  return loadPlanPages().find(p => p.id === id) || null;
+}
+
+function planPageChildren(parentId) {
+  return loadPlanPages()
+    .filter(p => p.parentId === parentId)
+    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+}
+
+function planPageBreadcrumb(id) {
+  const chain = [];
+  let cur = id ? getPlanPage(id) : null;
+  while (cur) {
+    chain.unshift(cur);
+    cur = cur.parentId ? getPlanPage(cur.parentId) : null;
+  }
+  return chain;
+}
+
+function newPlanPageId() {
+  return 'pp_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+}
+
+async function addPlanPage(type, parentId, title) {
+  const pages = loadPlanPages();
+  const siblings = pages.filter(p => p.parentId === parentId);
+  const order = siblings.length ? Math.max(...siblings.map(p => p.order ?? 0)) + 1 : 0;
+  const page = { id: newPlanPageId(), type, parentId: parentId || null, title, order };
+  pages.push(page);
+  await savePlanPages(pages);
+  return page;
+}
+
+async function deletePlanPage(id) {
+  const pages = loadPlanPages();
+  // собираем id страницы и всех потомков
+  const toDelete = new Set([id]);
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const p of pages) {
+      if (p.parentId && toDelete.has(p.parentId) && !toDelete.has(p.id)) {
+        toDelete.add(p.id);
+        changed = true;
+      }
+    }
+  }
+  // удаляем элементы планов, привязанные к этим страницам
+  const items = getItems('plans').filter(i => !toDelete.has(i.pageId));
+  await saveItems('plans', items);
+  await savePlanPages(pages.filter(p => !toDelete.has(p.id)));
+}
+
+async function renamePlanPage(id, title) {
+  const pages = loadPlanPages();
+  const page = pages.find(p => p.id === id);
+  if (!page) return;
+  page.title = title;
+  await savePlanPages(pages);
+}
+
+async function generateYearMonths() {
+  const year = new Date().getFullYear();
+  const existing = planPageChildren(null);
+  for (let m = 0; m < 12; m++) {
+    const title = `${MONTH_NAMES[m]} ${year}`;
+    if (existing.some(p => p.title === title)) continue;
+    await addPlanPage('month', null, title);
+  }
+}
+
+async function generateMonthWeeks(monthId) {
+  const existing = planPageChildren(monthId);
+  const start = existing.length;
+  for (let w = 1; w <= 4; w++) {
+    const title = `Неделя ${start + w}`;
+    if (existing.some(p => p.title === title)) continue;
+    await addPlanPage('week', monthId, title);
+  }
+}
+
+async function generateWeekDays(weekId) {
+  const existing = planPageChildren(weekId);
+  for (let d = 0; d < 7; d++) {
+    const title = WEEKDAY_NAMES[d];
+    if (existing.some(p => p.title === title)) continue;
+    await addPlanPage('day', weekId, title);
+  }
 }
 
 // ===== DATA =====
@@ -243,6 +350,9 @@ function renderItems(filter = '') {
   const emptyState = document.getElementById('empty-state');
 
   let items = getItems(currentTab);
+  if (currentTab === 'plans') {
+    items = items.filter(i => (i.pageId || null) === currentPlanPageId);
+  }
   if (filter) {
     const q = filter.toLowerCase();
     items = items.filter(i =>
@@ -280,6 +390,7 @@ function renderItems(filter = '') {
         </div>
       </div>
       ${item.category && currentTab === 'notes' ? `<div class="card-category">🏷 ${escHtml(item.category)}</div>` : ''}
+      ${item.link && currentTab === 'notes' ? `<a class="card-link" href="${escHtml(item.link)}" target="_blank" rel="noopener noreferrer">🔗 ${escHtml(item.link)}</a>` : ''}
       ${item.lifeAreas?.length ? `<div class="life-area-tags">${item.lifeAreas.map(a => `<span class="life-area-tag">${escHtml(a)}</span>`).join('')}</div>` : ''}
       ${currentTab === 'goals' ? `
         <div class="goal-meta">
@@ -350,6 +461,7 @@ function openEdit(id) {
   document.getElementById('input-due-date').value = item.dueDate || '';
   document.getElementById('input-start-date').value = item.startDate || '';
   document.getElementById('input-metric').value = item.metric || '';
+  document.getElementById('input-link').value = item.link || '';
   setActiveStatus(item.status || 'not_started');
   updateLifeAreaSelect();
   Array.from(document.getElementById('input-life-area').options).forEach(o => {
@@ -372,6 +484,16 @@ function openModal() {
   document.getElementById('input-start-date').previousElementSibling.style.display = isGoals ? '' : 'none';
   document.getElementById('input-metric').style.display = isGoals ? '' : 'none';
   document.getElementById('input-metric').previousElementSibling.style.display = isGoals ? '' : 'none';
+  // Срок: скрываем для заметок
+  document.getElementById('input-due-date').style.display = isNotes ? 'none' : '';
+  document.getElementById('due-date-label').style.display = isNotes ? 'none' : '';
+  // Ссылка: только для заметок
+  document.getElementById('input-link').style.display = isNotes ? '' : 'none';
+  document.getElementById('link-label').style.display = isNotes ? '' : 'none';
+  // Сфера жизни: только для целей
+  const lifeAreaWrap = document.querySelector('.life-areas-wrap');
+  lifeAreaWrap.style.display = isGoals ? '' : 'none';
+  lifeAreaWrap.previousElementSibling.style.display = isGoals ? '' : 'none';
   updateLifeAreaSelect();
   setActiveStatus('not_started');
   if (isGoals) {
@@ -391,6 +513,7 @@ function closeModal() {
   document.getElementById('input-due-date').value = '';
   document.getElementById('input-start-date').value = '';
   document.getElementById('input-metric').value = '';
+  document.getElementById('input-link').value = '';
   document.getElementById('input-life-area').selectedIndex = -1;
   setActivePriority('normal');
   setActiveStatus('not_started');
@@ -433,12 +556,13 @@ async function saveItem() {
   const dueDate = document.getElementById('input-due-date').value;
   const startDate = document.getElementById('input-start-date').value;
   const metric = document.getElementById('input-metric').value.trim();
+  const link = document.getElementById('input-link').value.trim();
   const lifeAreas = Array.from(document.getElementById('input-life-area').selectedOptions)
     .map(o => o.value).filter(Boolean);
   let items = getItems(currentTab);
 
   if (editingId) {
-    items = items.map(i => i.id === editingId ? { ...i, title, desc, category, priority: selectedPriority, dueDate, startDate, status: selectedStatus, metric, lifeAreas } : i);
+    items = items.map(i => i.id === editingId ? { ...i, title, desc, category, priority: selectedPriority, dueDate, startDate, status: selectedStatus, metric, link, lifeAreas } : i);
   } else {
     items.unshift({
       id: Date.now().toString(),
@@ -450,7 +574,9 @@ async function saveItem() {
       startDate,
       status: selectedStatus,
       metric,
+      link,
       lifeAreas,
+      pageId: currentTab === 'plans' ? currentPlanPageId : undefined,
       createdAt: Date.now(),
       done: false,
     });
@@ -497,7 +623,123 @@ function switchTab(tab) {
   const isNotes = tab === 'notes';
   document.querySelector('.category-filter-wrap').style.display = isNotes ? '' : 'none';
 
+  const plansNav = document.getElementById('plans-nav');
+  if (tab === 'plans') {
+    currentPlanPageId = null;
+    plansNav.classList.remove('hidden');
+    renderPlansNav();
+  } else {
+    plansNav.classList.add('hidden');
+  }
+
   renderItems();
+}
+
+// ===== PLANS NAVIGATION =====
+const PLAN_TYPE_LABELS = { month: 'месяц', week: 'неделя', day: 'день' };
+
+function selectPlanPage(id) {
+  currentPlanPageId = id;
+  renderPlansNav();
+  renderItems(document.getElementById('search-input').value);
+}
+
+function renderPlansNav() {
+  const nav = document.getElementById('plans-nav');
+  if (!nav) return;
+
+  const crumbs = planPageBreadcrumb(currentPlanPageId);
+  const current = currentPlanPageId ? getPlanPage(currentPlanPageId) : null;
+  const children = planPageChildren(currentPlanPageId);
+
+  // Хлебные крошки
+  const breadcrumbHtml = `
+    <div class="plans-breadcrumb">
+      <button class="crumb ${!currentPlanPageId ? 'active' : ''}" onclick="selectPlanPage(null)">📋 Планы</button>
+      ${crumbs.map(c => `<span class="crumb-sep">›</span><button class="crumb ${c.id === currentPlanPageId ? 'active' : ''}" onclick="selectPlanPage('${c.id}')">${escHtml(c.title)}</button>`).join('')}
+    </div>`;
+
+  // Кнопки действий по уровню
+  let actionsHtml = '';
+  if (!current) {
+    actionsHtml = `
+      <button class="plans-action" onclick="onGenerateMonths()">📅 Сформировать год по месяцам</button>
+      <button class="plans-action ghost" onclick="onAddPlanPage('month', null)">+ Месяц</button>`;
+  } else if (current.type === 'month') {
+    actionsHtml = `
+      <button class="plans-action" onclick="onGenerateWeeks('${current.id}')">🗓 Сформировать недели</button>
+      <button class="plans-action ghost" onclick="onAddPlanPage('week', '${current.id}')">+ Неделя</button>`;
+  } else if (current.type === 'week') {
+    actionsHtml = `
+      <button class="plans-action" onclick="onGenerateDays('${current.id}')">📆 Сформировать дни</button>
+      <button class="plans-action ghost" onclick="onAddPlanPage('day', '${current.id}')">+ День</button>`;
+  }
+
+  // Чипы дочерних страниц
+  const childTypeLabel = children.length ? PLAN_TYPE_LABELS[children[0].type] : '';
+  const chipsHtml = children.length ? `
+    <div class="plans-chips">
+      ${children.map(c => `
+        <div class="plan-chip" onclick="selectPlanPage('${c.id}')">
+          <span class="plan-chip-title">${escHtml(c.title)}</span>
+          <button class="plan-chip-btn" title="Переименовать" onclick="event.stopPropagation(); onRenamePlanPage('${c.id}')">✎</button>
+          <button class="plan-chip-btn delete" title="Удалить" onclick="event.stopPropagation(); onDeletePlanPage('${c.id}')">✕</button>
+        </div>
+      `).join('')}
+    </div>` : '';
+
+  nav.innerHTML = `
+    ${breadcrumbHtml}
+    <div class="plans-toolbar">${actionsHtml}</div>
+    ${chipsHtml}
+  `;
+}
+
+async function onGenerateMonths() {
+  await generateYearMonths();
+  renderPlansNav();
+}
+
+async function onGenerateWeeks(monthId) {
+  await generateMonthWeeks(monthId);
+  renderPlansNav();
+}
+
+async function onGenerateDays(weekId) {
+  await generateWeekDays(weekId);
+  renderPlansNav();
+}
+
+async function onAddPlanPage(type, parentId) {
+  const label = PLAN_TYPE_LABELS[type];
+  const title = prompt(`Название (${label}):`, '');
+  if (title === null) return;
+  const name = title.trim();
+  if (!name) return;
+  await addPlanPage(type, parentId, name);
+  renderPlansNav();
+}
+
+async function onRenamePlanPage(id) {
+  const page = getPlanPage(id);
+  if (!page) return;
+  const title = prompt('Новое название:', page.title);
+  if (title === null) return;
+  const name = title.trim();
+  if (!name) return;
+  await renamePlanPage(id, name);
+  renderPlansNav();
+  renderItems(document.getElementById('search-input').value);
+}
+
+async function onDeletePlanPage(id) {
+  const page = getPlanPage(id);
+  if (!page) return;
+  if (!confirm(`Удалить «${page.title}» и все вложенные странички и записи?`)) return;
+  await deletePlanPage(id);
+  if (currentPlanPageId === id) currentPlanPageId = page.parentId || null;
+  renderPlansNav();
+  renderItems(document.getElementById('search-input').value);
 }
 
 // ===== INIT =====
@@ -716,6 +958,16 @@ function updateDumpLineNumbers() {
   if (!ta || !nums) return;
   const count = Math.max(1, (ta.value || '').split('\n').length);
   nums.innerHTML = Array.from({ length: count }, (_, i) => `<div>${i + 1}.</div>`).join('');
+  autoGrowDump();
+}
+
+function autoGrowDump() {
+  const ta = document.getElementById('dump-textarea');
+  const nums = document.getElementById('dump-line-numbers');
+  if (!ta) return;
+  ta.style.height = 'auto';
+  ta.style.height = ta.scrollHeight + 'px';
+  if (nums) nums.style.height = ta.style.height;
 }
 
 function showDumpToast(msg) {

@@ -46,6 +46,7 @@
     </header>
 
     <div class="content">
+      <div id="plans-nav" class="plans-nav hidden"></div>
       <div id="items-grid" class="items-grid"></div>
       <div id="empty-state" class="empty-state hidden">
         <span class="empty-icon">🗂️</span>
@@ -127,8 +128,11 @@
           <button type="button" class="btn-life-area-manage" id="open-life-area-manager" title="Настроить сферы">⚙</button>
         </div>
 
-        <label>Срок</label>
+        <label id="due-date-label">Срок</label>
         <input type="date" id="input-due-date" />
+
+        <label id="link-label">Ссылка</label>
+        <input type="url" id="input-link" placeholder="https://..." />
 
         <label>Дата начала</label>
         <input type="date" id="input-start-date" />

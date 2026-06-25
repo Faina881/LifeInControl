@@ -324,6 +324,133 @@ nav {
 }
 .content::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
 
+/* ===== PLANS NAVIGATION ===== */
+.plans-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.plans-breadcrumb {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.plans-breadcrumb .crumb {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 8px;
+  font-family: inherit;
+  transition: background 0.2s, color 0.2s;
+}
+
+.plans-breadcrumb .crumb:hover {
+  background: rgba(37,99,235,0.08);
+  color: var(--accent);
+}
+
+.plans-breadcrumb .crumb.active {
+  color: var(--accent);
+}
+
+.crumb-sep {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.plans-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.plans-action {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: #fff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-family: inherit;
+  transition: all 0.2s;
+  box-shadow: 0 4px 14px rgba(37,99,235,0.2);
+}
+
+.plans-action:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(37,99,235,0.3);
+}
+
+.plans-action.ghost {
+  background: transparent;
+  color: var(--accent);
+  border: 1px dashed var(--border);
+  box-shadow: none;
+}
+
+.plans-action.ghost:hover {
+  background: rgba(37,99,235,0.06);
+  border-color: var(--accent);
+}
+
+.plans-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.plan-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 7px 10px 7px 14px;
+  cursor: pointer;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text);
+  transition: all 0.2s;
+}
+
+.plan-chip:hover {
+  border-color: var(--accent);
+  background: rgba(37,99,235,0.05);
+}
+
+.plan-chip-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.78rem;
+  padding: 2px 4px;
+  border-radius: 6px;
+  line-height: 1;
+  transition: all 0.2s;
+}
+
+.plan-chip-btn:hover {
+  background: rgba(37,99,235,0.1);
+  color: var(--accent);
+}
+
+.plan-chip-btn.delete:hover {
+  background: rgba(239,68,68,0.1);
+  color: var(--danger);
+}
+
 /* ===== CARDS GRID ===== */
 .items-grid {
   display: grid;
@@ -430,6 +557,25 @@ nav {
   gap: 4px;
   width: fit-content;
   letter-spacing: 0.2px;
+}
+
+.card-link {
+  font-size: 0.8rem;
+  color: var(--accent);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  width: fit-content;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  word-break: break-all;
+}
+
+.card-link:hover {
+  text-decoration: underline;
 }
 
 .card-desc {
@@ -2072,6 +2218,11 @@ nav {
   /* Hamburger visible */
   .hamburger {
     display: flex;
+  }
+
+  /* Прячем гамбургер, когда открыта любая модалка */
+  body:has(.modal-overlay:not(.hidden)) .hamburger {
+    display: none;
   }
 
   /* Sidebar скользит слева */
