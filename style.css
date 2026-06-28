@@ -1543,9 +1543,11 @@ nav {
 .dump-workspace {
   display: grid;
   grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr;
   gap: 0;
   flex: 1;
   overflow: hidden;
+  min-height: 0;
 }
 
 .dump-input-col {
@@ -1554,6 +1556,8 @@ nav {
   flex-direction: column;
   padding: 12px 14px;
   gap: 8px;
+  overflow-y: auto;
+  min-height: 0;
 }
 
 .dump-textarea-wrap {
@@ -1670,6 +1674,7 @@ nav {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  min-height: 0;
 }
 
 .dump-items-col::-webkit-scrollbar { width: 6px; }
