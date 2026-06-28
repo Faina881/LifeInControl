@@ -459,8 +459,9 @@ async function addQuickTask(title) {
     done: false,
     createdAt: Date.now()
   });
+  _cache[STORAGE_KEY] = data;
   renderTasksList();
-  await saveData(data);
+  await persistKey(STORAGE_KEY);
 }
 
 async function toggleTaskCheck(id, checked) {
@@ -476,9 +477,10 @@ async function toggleTaskCheck(id, checked) {
     data.tasks = items;
     data.done = data.done || [];
     data.done.unshift(item);
+    _cache[STORAGE_KEY] = data;
     renderTasksList();
     tgHaptic?.('medium');
-    await saveData(data);
+    await persistKey(STORAGE_KEY);
   }
 }
 
@@ -503,8 +505,9 @@ function renderTasksList() {
 async function deleteTaskItem(id) {
   const data = loadData();
   data.tasks = (data.tasks || []).filter(i => i.id !== id);
+  _cache[STORAGE_KEY] = data;
   renderTasksList();
-  await saveData(data);
+  await persistKey(STORAGE_KEY);
 }
 
 function formatDateShort(iso) {
