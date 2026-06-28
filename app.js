@@ -5,6 +5,7 @@ const PLAN_PAGES_KEY = 'dashboard_plan_pages';
 
 const TAB_TITLES = {
   goals: 'Цели',
+  tasks: 'Дела',
   plans: 'Планы',
   notes: 'Заметки',
   done: 'Сделано',
@@ -392,7 +393,7 @@ function renderItems(filter = '') {
       ${item.category && currentTab === 'notes' ? `<div class="card-category">🏷 ${escHtml(item.category)}</div>` : ''}
       ${item.link && currentTab === 'notes' ? `<a class="card-link" href="${escHtml(item.link)}" target="_blank" rel="noopener noreferrer">🔗 ${escHtml(item.link)}</a>` : ''}
       ${item.lifeAreas?.length ? `<div class="life-area-tags">${item.lifeAreas.map(a => `<span class="life-area-tag">${escHtml(a)}</span>`).join('')}</div>` : ''}
-      ${currentTab === 'goals' ? `
+      ${(currentTab === 'goals' || currentTab === 'tasks') ? `
         <div class="goal-meta">
           ${item.status ? `<span class="status-badge ${item.status}">${STATUS_LABELS[item.status]}</span>` : ''}
           ${item.startDate ? `<span class="meta-date">🚀 ${formatDateShort(item.startDate)}</span>` : ''}
@@ -400,7 +401,7 @@ function renderItems(filter = '') {
         </div>
         ${item.metric ? `<div class="metric">🎯 ${escHtml(item.metric)}</div>` : ''}
       ` : ''}
-      ${item.dueDate && currentTab !== 'goals' ? `<div class="due-date">📅 ${formatDateShort(item.dueDate)}</div>` : ''}
+      ${item.dueDate && currentTab !== 'goals' && currentTab !== 'tasks' ? `<div class="due-date">📅 ${formatDateShort(item.dueDate)}</div>` : ''}
       ${item.desc ? `<div class="card-desc">${escHtml(item.desc)}</div>` : ''}
       <div class="card-footer">
         <span class="card-date">${formatDate(item.createdAt)}</span>
@@ -454,7 +455,7 @@ function openEdit(id) {
   if (!item) return;
 
   editingId = id;
-  document.getElementById('modal-title').textContent = currentTab === 'goals' ? 'Редактировать цель' : 'Редактировать';
+  document.getElementById('modal-title').textContent = currentTab === 'goals' ? 'Редактировать цель' : currentTab === 'tasks' ? 'Редактировать дело' : 'Редактировать';
   document.getElementById('input-title').value = item.title;
   document.getElementById('input-desc').value = item.desc || '';
   document.getElementById('input-category').value = item.category || '';
@@ -476,10 +477,11 @@ function openModal() {
   document.getElementById('modal-overlay').classList.remove('hidden');
   const isNotes = currentTab === 'notes';
   const isGoals = currentTab === 'goals';
+  const isTasks = currentTab === 'tasks';
   document.querySelector('.priority-btns').style.display = isNotes ? 'none' : '';
   document.getElementById('priority-label').style.display = isNotes ? 'none' : '';
-  document.getElementById('status-btns').style.display = isGoals ? '' : 'none';
-  document.getElementById('status-label').style.display = isGoals ? '' : 'none';
+  document.getElementById('status-btns').style.display = (isGoals || isTasks) ? '' : 'none';
+  document.getElementById('status-label').style.display = (isGoals || isTasks) ? '' : 'none';
   document.getElementById('input-start-date').style.display = isGoals ? '' : 'none';
   document.getElementById('input-start-date').previousElementSibling.style.display = isGoals ? '' : 'none';
   document.getElementById('input-metric').style.display = isGoals ? '' : 'none';
@@ -499,6 +501,8 @@ function openModal() {
   if (isGoals) {
     const nextNumber = getItems('goals').length + 1;
     document.getElementById('modal-title').textContent = `Цель №${nextNumber}`;
+  } else if (isTasks) {
+    document.getElementById('modal-title').textContent = 'Новое дело';
   } else {
     document.getElementById('modal-title').textContent = 'Новая запись';
   }
