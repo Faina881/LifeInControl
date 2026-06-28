@@ -441,6 +441,7 @@ function renderItems(filter = '') {
       ${item.desc ? `<div class="card-desc">${escHtml(item.desc)}</div>` : ''}
       <div class="card-footer">
         <span class="card-date">${formatDate(item.createdAt)}</span>
+        ${currentTab === 'done' && item.sourceTab ? `<span class="source-badge source-${item.sourceTab}">${sourceLabel(item.sourceTab)}</span>` : ''}
         <span class="priority-badge ${item.priority}">${priorityLabel(item.priority)}</span>
       </div>
     </div>
@@ -463,14 +464,22 @@ async function addQuickTask(title) {
 }
 
 async function toggleTaskCheck(id, checked) {
-  const data = loadData();
-  const items = data.tasks || [];
-  const item = items.find(i => i.id === id);
-  if (!item) return;
-  item.done = checked;
-  if (checked) item.doneAt = Date.now();
-  renderTasksList();
-  await saveData(data);
+  if (checked) {
+    const data = loadData();
+    const items = data.tasks || [];
+    const idx = items.findIndex(i => i.id === id);
+    if (idx === -1) return;
+    const [item] = items.splice(idx, 1);
+    item.done = true;
+    item.doneAt = Date.now();
+    item.sourceTab = 'tasks';
+    data.tasks = items;
+    data.done = data.done || [];
+    data.done.unshift(item);
+    renderTasksList();
+    tgHaptic?.('medium');
+    await saveData(data);
+  }
 }
 
 function renderTasksList() {
@@ -507,6 +516,11 @@ function priorityLabel(p) {
   return { normal: 'Обычный', medium: 'Важный', high: 'Срочный' }[p] || p;
 }
 
+function sourceLabel(tab) {
+  const labels = { tasks: '📌 Дело', goals: '🎯 Цель', zadachi: '🗂️ Задача', plans: '📋 План', notes: '📝 Заметка' };
+  return labels[tab] || tab;
+}
+
 function escHtml(str) {
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
@@ -528,6 +542,7 @@ async function markDone(id) {
   const [item] = items.splice(idx, 1);
   item.done = true;
   item.doneAt = Date.now();
+  item.sourceTab = currentTab;
 
   allData[currentTab] = items;
   allData['done'] = allData['done'] || [];

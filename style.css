@@ -714,6 +714,7 @@ nav {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 6px;
   margin-top: 2px;
   padding-top: 10px;
   border-top: 1px solid var(--border);
@@ -723,6 +724,45 @@ nav {
   font-size: 0.72rem;
   color: var(--text-muted);
   letter-spacing: 0.1px;
+}
+
+.source-badge {
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 20px;
+  letter-spacing: 0.2px;
+  margin-left: auto;
+}
+
+.source-badge.source-tasks {
+  background: rgba(236,72,153,0.1);
+  color: #db2777;
+  border: 1px solid rgba(236,72,153,0.2);
+}
+
+.source-badge.source-goals {
+  background: rgba(99,102,241,0.1);
+  color: #6366f1;
+  border: 1px solid rgba(99,102,241,0.2);
+}
+
+.source-badge.source-zadachi {
+  background: rgba(6,182,212,0.1);
+  color: #0891b2;
+  border: 1px solid rgba(6,182,212,0.2);
+}
+
+.source-badge.source-plans {
+  background: rgba(245,158,11,0.1);
+  color: #d97706;
+  border: 1px solid rgba(245,158,11,0.2);
+}
+
+.source-badge.source-notes {
+  background: rgba(139,92,246,0.1);
+  color: #7c3aed;
+  border: 1px solid rgba(139,92,246,0.2);
 }
 
 .priority-badge {
