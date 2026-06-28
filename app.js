@@ -137,31 +137,44 @@ async function renamePlanPage(id, title) {
 
 async function generateYearMonths() {
   const year = new Date().getFullYear();
-  const existing = planPageChildren(null);
+  const pages = loadPlanPages();
+  const existing = pages.filter(p => !p.parentId);
   for (let m = 0; m < 12; m++) {
     const title = `${MONTH_NAMES[m]} ${year}`;
     if (existing.some(p => p.title === title)) continue;
-    await addPlanPage('month', null, title);
+    const order = existing.length + m;
+    pages.push({ id: newPlanPageId(), type: 'month', parentId: null, title, order });
   }
+  _cache[PLAN_PAGES_KEY] = pages;
+  renderPlansNav();
+  await persistKey(PLAN_PAGES_KEY);
 }
 
 async function generateMonthWeeks(monthId) {
-  const existing = planPageChildren(monthId);
+  const pages = loadPlanPages();
+  const existing = pages.filter(p => p.parentId === monthId);
   const start = existing.length;
   for (let w = 1; w <= 4; w++) {
     const title = `Неделя ${start + w}`;
     if (existing.some(p => p.title === title)) continue;
-    await addPlanPage('week', monthId, title);
+    pages.push({ id: newPlanPageId(), type: 'week', parentId: monthId, title, order: start + w });
   }
+  _cache[PLAN_PAGES_KEY] = pages;
+  renderPlansNav();
+  await persistKey(PLAN_PAGES_KEY);
 }
 
 async function generateWeekDays(weekId) {
-  const existing = planPageChildren(weekId);
+  const pages = loadPlanPages();
+  const existing = pages.filter(p => p.parentId === weekId);
   for (let d = 0; d < 7; d++) {
     const title = WEEKDAY_NAMES[d];
     if (existing.some(p => p.title === title)) continue;
-    await addPlanPage('day', weekId, title);
+    pages.push({ id: newPlanPageId(), type: 'day', parentId: weekId, title, order: d });
   }
+  _cache[PLAN_PAGES_KEY] = pages;
+  renderPlansNav();
+  await persistKey(PLAN_PAGES_KEY);
 }
 
 // ===== DATA =====
@@ -379,17 +392,10 @@ function renderItems(filter = '') {
         <div class="tasks-input-row">
           <input type="text" id="tasks-quick-input" class="tasks-quick-input" placeholder="Добавить дело..." />
         </div>
-        <div class="tasks-list">
-          ${items.map(item => `
-            <label class="tasks-item ${item.done ? 'is-checked' : ''}" data-id="${item.id}">
-              <input type="checkbox" ${item.done ? 'checked' : ''} onchange="toggleTaskCheck('${item.id}', this.checked)" />
-              <span class="tasks-item-text">${escHtml(item.title)}</span>
-              <button class="tasks-item-del" onclick="deleteItem('${item.id}')" title="Удалить">✕</button>
-            </label>
-          `).join('')}
-        </div>
+        <div class="tasks-list"></div>
       </div>
     `;
+    renderTasksList();
     const input = document.getElementById('tasks-quick-input');
     input.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && input.value.trim()) {
@@ -442,8 +448,9 @@ function renderItems(filter = '') {
 }
 
 async function addQuickTask(title) {
-  const items = getItems('tasks');
-  items.push({
+  const data = loadData();
+  if (!data.tasks) data.tasks = [];
+  data.tasks.push({
     id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
     title,
     desc: '',
@@ -451,18 +458,44 @@ async function addQuickTask(title) {
     done: false,
     createdAt: Date.now()
   });
-  await saveItems('tasks', items);
-  renderItems(document.getElementById('search-input').value);
+  renderTasksList();
+  await saveData(data);
 }
 
 async function toggleTaskCheck(id, checked) {
-  const items = getItems('tasks');
+  const data = loadData();
+  const items = data.tasks || [];
   const item = items.find(i => i.id === id);
   if (!item) return;
   item.done = checked;
   if (checked) item.doneAt = Date.now();
-  await saveItems('tasks', items);
-  renderItems(document.getElementById('search-input').value);
+  renderTasksList();
+  await saveData(data);
+}
+
+function renderTasksList() {
+  const filter = (document.getElementById('search-input')?.value || '').toLowerCase();
+  let items = getItems('tasks');
+  if (filter) {
+    items = items.filter(i => i.title.toLowerCase().includes(filter));
+  }
+  const listEl = document.querySelector('.tasks-list');
+  if (!listEl) return;
+  listEl.innerHTML = items.map(item => `
+    <label class="tasks-item ${item.done ? 'is-checked' : ''}" data-id="${item.id}">
+      <input type="checkbox" ${item.done ? 'checked' : ''} onchange="toggleTaskCheck('${item.id}', this.checked)" />
+      <span class="tasks-item-text">${escHtml(item.title)}</span>
+      <button class="tasks-item-del" onclick="event.preventDefault();deleteTaskItem('${item.id}')" title="Удалить">✕</button>
+    </label>
+  `).join('');
+  document.getElementById('total-count').textContent = `${totalCount()} записей`;
+}
+
+async function deleteTaskItem(id) {
+  const data = loadData();
+  data.tasks = (data.tasks || []).filter(i => i.id !== id);
+  renderTasksList();
+  await saveData(data);
 }
 
 function formatDateShort(iso) {
@@ -761,16 +794,19 @@ function renderPlansNav() {
 async function onGenerateMonths() {
   await generateYearMonths();
   renderPlansNav();
+  renderItems(document.getElementById('search-input').value);
 }
 
 async function onGenerateWeeks(monthId) {
   await generateMonthWeeks(monthId);
   renderPlansNav();
+  renderItems(document.getElementById('search-input').value);
 }
 
 async function onGenerateDays(weekId) {
   await generateWeekDays(weekId);
   renderPlansNav();
+  renderItems(document.getElementById('search-input').value);
 }
 
 async function onAddPlanPage(type, parentId) {
