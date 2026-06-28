@@ -6,6 +6,7 @@ const PLAN_PAGES_KEY = 'dashboard_plan_pages';
 const TAB_TITLES = {
   goals: 'Цели',
   tasks: 'Дела',
+  zadachi: 'Задачи',
   plans: 'Планы',
   notes: 'Заметки',
   done: 'Сделано',
@@ -370,6 +371,35 @@ function renderItems(filter = '') {
 
   document.getElementById('total-count').textContent = `${totalCount()} записей`;
 
+  // Checkbox-based rendering for "tasks" (Дела)
+  if (currentTab === 'tasks') {
+    emptyState.classList.add('hidden');
+    grid.innerHTML = `
+      <div class="tasks-checklist">
+        <div class="tasks-input-row">
+          <input type="text" id="tasks-quick-input" class="tasks-quick-input" placeholder="Добавить дело..." />
+        </div>
+        <div class="tasks-list">
+          ${items.map(item => `
+            <label class="tasks-item ${item.done ? 'is-checked' : ''}" data-id="${item.id}">
+              <input type="checkbox" ${item.done ? 'checked' : ''} onchange="toggleTaskCheck('${item.id}', this.checked)" />
+              <span class="tasks-item-text">${escHtml(item.title)}</span>
+              <button class="tasks-item-del" onclick="deleteItem('${item.id}')" title="Удалить">✕</button>
+            </label>
+          `).join('')}
+        </div>
+      </div>
+    `;
+    const input = document.getElementById('tasks-quick-input');
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && input.value.trim()) {
+        addQuickTask(input.value.trim());
+        input.value = '';
+      }
+    });
+    return;
+  }
+
   if (items.length === 0) {
     grid.innerHTML = '';
     emptyState.classList.remove('hidden');
@@ -393,7 +423,7 @@ function renderItems(filter = '') {
       ${item.category && currentTab === 'notes' ? `<div class="card-category">🏷 ${escHtml(item.category)}</div>` : ''}
       ${item.link && currentTab === 'notes' ? `<a class="card-link" href="${escHtml(item.link)}" target="_blank" rel="noopener noreferrer">🔗 ${escHtml(item.link)}</a>` : ''}
       ${item.lifeAreas?.length ? `<div class="life-area-tags">${item.lifeAreas.map(a => `<span class="life-area-tag">${escHtml(a)}</span>`).join('')}</div>` : ''}
-      ${(currentTab === 'goals' || currentTab === 'tasks') ? `
+      ${(currentTab === 'goals' || currentTab === 'zadachi') ? `
         <div class="goal-meta">
           ${item.status ? `<span class="status-badge ${item.status}">${STATUS_LABELS[item.status]}</span>` : ''}
           ${item.startDate ? `<span class="meta-date">🚀 ${formatDateShort(item.startDate)}</span>` : ''}
@@ -401,7 +431,7 @@ function renderItems(filter = '') {
         </div>
         ${item.metric ? `<div class="metric">🎯 ${escHtml(item.metric)}</div>` : ''}
       ` : ''}
-      ${item.dueDate && currentTab !== 'goals' && currentTab !== 'tasks' ? `<div class="due-date">📅 ${formatDateShort(item.dueDate)}</div>` : ''}
+      ${item.dueDate && currentTab !== 'goals' && currentTab !== 'zadachi' ? `<div class="due-date">📅 ${formatDateShort(item.dueDate)}</div>` : ''}
       ${item.desc ? `<div class="card-desc">${escHtml(item.desc)}</div>` : ''}
       <div class="card-footer">
         <span class="card-date">${formatDate(item.createdAt)}</span>
@@ -409,6 +439,30 @@ function renderItems(filter = '') {
       </div>
     </div>
   `).join('');
+}
+
+async function addQuickTask(title) {
+  const items = getItems('tasks');
+  items.push({
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    title,
+    desc: '',
+    priority: 'normal',
+    done: false,
+    createdAt: Date.now()
+  });
+  await saveItems('tasks', items);
+  renderItems(document.getElementById('search-input').value);
+}
+
+async function toggleTaskCheck(id, checked) {
+  const items = getItems('tasks');
+  const item = items.find(i => i.id === id);
+  if (!item) return;
+  item.done = checked;
+  if (checked) item.doneAt = Date.now();
+  await saveItems('tasks', items);
+  renderItems(document.getElementById('search-input').value);
 }
 
 function formatDateShort(iso) {
@@ -455,7 +509,7 @@ function openEdit(id) {
   if (!item) return;
 
   editingId = id;
-  document.getElementById('modal-title').textContent = currentTab === 'goals' ? 'Редактировать цель' : currentTab === 'tasks' ? 'Редактировать дело' : 'Редактировать';
+  document.getElementById('modal-title').textContent = currentTab === 'goals' ? 'Редактировать цель' : currentTab === 'zadachi' ? 'Редактировать задачу' : currentTab === 'tasks' ? 'Редактировать дело' : 'Редактировать';
   document.getElementById('input-title').value = item.title;
   document.getElementById('input-desc').value = item.desc || '';
   document.getElementById('input-category').value = item.category || '';
@@ -477,11 +531,12 @@ function openModal() {
   document.getElementById('modal-overlay').classList.remove('hidden');
   const isNotes = currentTab === 'notes';
   const isGoals = currentTab === 'goals';
+  const isZadachi = currentTab === 'zadachi';
   const isTasks = currentTab === 'tasks';
   document.querySelector('.priority-btns').style.display = isNotes ? 'none' : '';
   document.getElementById('priority-label').style.display = isNotes ? 'none' : '';
-  document.getElementById('status-btns').style.display = (isGoals || isTasks) ? '' : 'none';
-  document.getElementById('status-label').style.display = (isGoals || isTasks) ? '' : 'none';
+  document.getElementById('status-btns').style.display = (isGoals || isZadachi) ? '' : 'none';
+  document.getElementById('status-label').style.display = (isGoals || isZadachi) ? '' : 'none';
   document.getElementById('input-start-date').style.display = isGoals ? '' : 'none';
   document.getElementById('input-start-date').previousElementSibling.style.display = isGoals ? '' : 'none';
   document.getElementById('input-metric').style.display = isGoals ? '' : 'none';
@@ -501,6 +556,8 @@ function openModal() {
   if (isGoals) {
     const nextNumber = getItems('goals').length + 1;
     document.getElementById('modal-title').textContent = `Цель №${nextNumber}`;
+  } else if (isZadachi) {
+    document.getElementById('modal-title').textContent = 'Новая задача';
   } else if (isTasks) {
     document.getElementById('modal-title').textContent = 'Новое дело';
   } else {
@@ -625,7 +682,9 @@ function switchTab(tab) {
   selectedCategoryFilter = '';
 
   const isNotes = tab === 'notes';
+  const isTasks = tab === 'tasks';
   document.querySelector('.category-filter-wrap').style.display = isNotes ? '' : 'none';
+  document.getElementById('open-modal').style.display = isTasks ? 'none' : '';
 
   const plansNav = document.getElementById('plans-nav');
   if (tab === 'plans') {

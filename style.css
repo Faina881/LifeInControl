@@ -470,6 +470,104 @@ nav {
   color: var(--danger);
 }
 
+/* ===== TASKS CHECKLIST ===== */
+.tasks-checklist {
+  max-width: 600px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.tasks-input-row {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.tasks-quick-input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px dashed var(--border-light);
+  border-radius: 12px;
+  font-size: 0.95rem;
+  font-family: inherit;
+  outline: none;
+  transition: all 0.2s;
+  background: var(--card-bg) !important;
+}
+
+.tasks-quick-input:focus {
+  border-color: var(--accent);
+  border-style: solid;
+  box-shadow: 0 0 0 3px rgba(99,102,241,0.12);
+}
+
+.tasks-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tasks-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: all 0.18s;
+  animation: fadeIn 0.2s ease;
+}
+
+.tasks-item:hover {
+  border-color: var(--border-light);
+  background: var(--card-hover);
+}
+
+.tasks-item input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.tasks-item-text {
+  flex: 1;
+  font-size: 0.93rem;
+  color: var(--text);
+  transition: all 0.2s;
+}
+
+.tasks-item.is-checked .tasks-item-text {
+  text-decoration: line-through;
+  color: var(--text-muted);
+  opacity: 0.6;
+}
+
+.tasks-item-del {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 6px;
+  opacity: 0;
+  transition: all 0.15s;
+}
+
+.tasks-item:hover .tasks-item-del {
+  opacity: 1;
+}
+
+.tasks-item-del:hover {
+  background: var(--danger-glow);
+  color: var(--danger);
+}
+
 /* ===== CARDS GRID ===== */
 .items-grid {
   display: grid;
