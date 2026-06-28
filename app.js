@@ -1274,6 +1274,17 @@ document.getElementById('dump-textarea').addEventListener('scroll', () => {
 document.getElementById('dump-textarea').addEventListener('keydown', (e) => {
   if (e.ctrlKey && e.key === 'Enter') {
     document.getElementById('dump-parse-btn').click();
+    return;
+  }
+  if (e.key === 'Enter') {
+    const ta = e.target;
+    const pos = ta.selectionStart;
+    const text = ta.value;
+    const lineStart = text.lastIndexOf('\n', pos - 1) + 1;
+    const currentLine = text.slice(lineStart, pos).trim();
+    if (!currentLine) {
+      e.preventDefault();
+    }
   }
 });
 
