@@ -10,6 +10,7 @@ const TAB_TITLES = {
   plans: 'Планы',
   notes: 'Заметки',
   done: 'Сделано',
+  budget: 'Бюджет',
   dump: 'Выгрузка',
 };
 
@@ -850,12 +851,14 @@ function switchTab(tab) {
     btn.classList.toggle('active', btn.dataset.tab === tab);
   });
 
-  const dumpPanel = document.getElementById('dump-panel');
-  const obsPanel  = document.getElementById('obsidian-panel');
-  const mainEl    = document.querySelector('.main');
+  const dumpPanel   = document.getElementById('dump-panel');
+  const obsPanel    = document.getElementById('obsidian-panel');
+  const budgetPanel = document.getElementById('budget-panel');
+  const mainEl      = document.querySelector('.main');
 
   dumpPanel.classList.add('hidden');
   obsPanel.classList.add('hidden');
+  budgetPanel && budgetPanel.classList.add('hidden');
   mainEl.style.display = '';
 
   if (tab === 'dump') {
@@ -867,6 +870,12 @@ function switchTab(tab) {
   if (tab === 'obsidian') {
     mainEl.style.display = 'none';
     obsPanel.classList.remove('hidden');
+    return;
+  }
+  if (tab === 'budget') {
+    mainEl.style.display = 'none';
+    budgetPanel && budgetPanel.classList.remove('hidden');
+    if (typeof initBudgetPanel === 'function') initBudgetPanel();
     return;
   }
 

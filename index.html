@@ -27,6 +27,7 @@
       <div id="sidebar-plans-tree" class="sidebar-plans-tree hidden"></div>
       <button class="nav-btn" data-tab="notes">📝 Заметки</button>
       <button class="nav-btn" data-tab="done">✅ Сделано</button>
+      <button class="nav-btn" data-tab="budget">💰 Бюджет</button>
       <button class="nav-btn" data-tab="dump">⚡ Выгрузка</button>
       <div class="sidebar-divider"></div>
       <button class="nav-btn" data-tab="obsidian">🟣 Obsidian</button>
@@ -247,6 +248,55 @@
     </div>
   </div>
 
+  <!-- Бюджет панель -->
+  <div id="budget-panel" class="budget-panel hidden">
+    <div class="budget-header">
+      <h1>💰 Бюджет</h1>
+      <div class="budget-header-actions">
+        <div class="budget-start-wrap">
+          <label>Старт бюджета:</label>
+          <select id="budget-start-day" onchange="budgetSetStartDay(this.value)">
+            <!-- дни 1-31 -->
+          </select>
+          <span id="budget-period-label" class="budget-period-label"></span>
+        </div>
+        <div class="budget-income-wrap">
+          <label>Доход:</label>
+          <input type="number" id="budget-income" class="budget-income-input" placeholder="0" onchange="budgetSetIncome(this.value)" />
+          <span class="budget-currency">₽</span>
+        </div>
+      </div>
+    </div>
+    <div class="budget-body">
+      <div class="budget-summary" id="budget-summary"></div>
+      <div class="budget-categories">
+        <div class="budget-cat-header">
+          <span>Статья расходов</span>
+          <span>Лимит</span>
+          <span>Потрачено</span>
+          <span>Остаток</span>
+          <span></span>
+        </div>
+        <div id="budget-cat-list"></div>
+        <div class="budget-add-row">
+          <input type="text" id="budget-new-cat" class="budget-new-cat-input" placeholder="Новая статья..." />
+          <input type="number" id="budget-new-limit" class="budget-new-limit-input" placeholder="Лимит ₽" />
+          <button class="budget-add-btn" onclick="budgetAddCategory()">+ Добавить</button>
+        </div>
+      </div>
+      <div class="budget-transactions">
+        <div class="budget-tx-header">📋 Расходы</div>
+        <div class="budget-add-tx-row">
+          <select id="budget-tx-cat" class="budget-tx-cat"></select>
+          <input type="text" id="budget-tx-desc" class="budget-tx-desc" placeholder="Описание..." />
+          <input type="number" id="budget-tx-amount" class="budget-tx-amount" placeholder="Сумма ₽" />
+          <button class="budget-add-btn" onclick="budgetAddTransaction()">+ Добавить</button>
+        </div>
+        <div id="budget-tx-list"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- Auth screen overlay -->
   <div id="auth-screen" class="auth-screen hidden">
     <div class="auth-card">
@@ -266,6 +316,7 @@
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script type="module" src="firebase.js"></script>
   <script src="app.js"></script>
+  <script src="budget.js"></script>
   <script src="obsidian.js"></script>
   <script src="analyze.js"></script>
 </body>
