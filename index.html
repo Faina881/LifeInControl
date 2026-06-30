@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Мой дашборд</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <button class="hamburger" id="hamburger" aria-label="Меню">
+    <span></span><span></span><span></span>
+  </button>
+  <div class="sidebar-overlay hidden" id="sidebar-overlay"></div>
+
+  <div class="sidebar" id="sidebar">
+    <div class="logo"><span class="logo-dot"></span>Мой мир</div>
+    <div class="sidebar-calendar" id="sidebar-calendar"></div>
+    <nav>
+      <button class="nav-btn active" data-tab="goals">🎯 Цели</button>
+      <button class="nav-btn" data-tab="tasks">📌 Дела</button>
+      <button class="nav-btn" data-tab="zadachi">🗂️ Задачи</button>
+      <button class="nav-btn" data-tab="plans">📋 Планы</button>
+      <div id="sidebar-plans-tree" class="sidebar-plans-tree hidden"></div>
+      <button class="nav-btn" data-tab="notes">📝 Заметки</button>
+      <button class="nav-btn" data-tab="done">✅ Сделано</button>
+      <button class="nav-btn" data-tab="dump">⚡ Выгрузка</button>
+      <div class="sidebar-divider"></div>
+      <button class="nav-btn" data-tab="obsidian">🟣 Obsidian</button>
+    </nav>
+    <div class="sidebar-footer">
+      <div id="auth-avatar" class="auth-avatar" style="display:none">
+        <img id="auth-photo" src="" alt="" />
+        <span class="auth-name" id="auth-name"></span>
+      </div>
+      <button id="auth-btn" class="auth-btn">Войти через Google</button>
+      <span id="total-count">0 записей</span>
+    </div>
+  </div>
+
+  <div class="main">
+    <header class="topbar">
+      <h1 id="tab-title">Цели</h1>
+      <div class="topbar-actions">
+        <input type="text" id="search-input" placeholder="Поиск..." />
+        <div class="category-filter-wrap">
+          <select id="category-filter"><option value="">Все категории</option></select>
+          <button class="btn-cat-manage" id="open-cat-manager" title="Управление категориями">⚙</button>
+        </div>
+        <button class="btn-add" id="open-modal">+ Добавить</button>
+      </div>
+    </header>
+
+    <div class="content">
+      <div id="plans-nav" class="plans-nav hidden"></div>
+      <div id="items-grid" class="items-grid"></div>
+      <div id="empty-state" class="empty-state hidden">
+        <span class="empty-icon">🗂️</span>
+        <p>Пока ничего нет. Добавь первую запись!</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Правая панель: дерево планов -->
+  <div id="plans-right-sidebar" class="plans-right-sidebar hidden">
+    <div class="prs-header" id="prs-drag-handle">
+      <span>📋 Планы</span>
+      <button class="prs-close" onclick="document.getElementById('plans-right-sidebar').classList.add('hidden')" title="Закрыть">✕</button>
+    </div>
+    <div id="plans-tree" class="plans-tree"></div>
+  </div>
+
+  <!-- Панель Выгрузка -->
+  <div id="dump-panel" class="dump-panel hidden">
+    <div id="dump-toast" class="dump-toast hidden"></div>
+    <div class="dump-header">
+      <div>
+        <h1>⚡ Выгрузка</h1>
+      </div>
+    </div>
+    <div class="dump-workspace">
+      <div class="dump-input-col">
+        <div class="dump-textarea-wrap">
+          <div class="dump-line-numbers" id="dump-line-numbers">1</div>
+          <textarea id="dump-textarea" placeholder="Напиши здесь всё, что на уме...
+Позвонить врачу
+Купить книжку по философии
+Сдать отчёт на проекте"></textarea>
+        </div>
+        <button class="btn-add" id="dump-parse-btn">Добавить</button>
+      </div>
+      <div class="dump-items-col" id="dump-items-col">
+        <div class="dump-empty-hint">Список пуст</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Obsidian панель -->
+  <div id="obsidian-panel" class="obsidian-panel hidden">
+    <div class="obs-header">
+      <div class="obs-vault-info">
+        <span id="obs-vault-name">Vault не выбран</span>
+      </div>
+      <div class="obs-actions">
+        <button class="btn-obs-secondary" id="obs-connect">📂 Выбрать vault</button>
+        <button class="btn-obs-secondary hidden" id="obs-analyze">🔍 Анализ</button>
+        <button class="btn-obs-primary hidden" id="obs-new-note">+ Новая заметка</button>
+      </div>
+    </div>
+    <div id="obs-browser" class="obs-browser">
+      <div class="obs-connect-prompt">
+        <div class="empty-icon">🟣</div>
+        <p>Выбери папку своего Obsidian vault'а</p>
+        <p class="obs-hint">Работает в Chrome и Edge</p>
+        <button class="btn-add" id="obs-connect-big">Подключить Obsidian</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Модальное окно -->
+  <div class="modal-overlay hidden" id="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="modal-title">Новая запись</h2>
+        <button class="modal-close" id="modal-close">✕</button>
+      </div>
+      <div class="modal-body">
+        <label>Заголовок</label>
+        <input type="text" id="input-title" placeholder="Введи заголовок..." />
+
+        <label>Описание</label>
+        <textarea id="input-desc" placeholder="Подробности, мысли, детали..."></textarea>
+
+        <label>Категория</label>
+        <input type="text" id="input-category" placeholder="Например: работа, здоровье, идеи..." list="category-suggestions" />
+        <datalist id="category-suggestions"></datalist>
+
+        <label>Сфера жизни</label>
+        <div class="life-areas-wrap">
+          <select id="input-life-area" multiple>
+            <option value="">Выбери сферы...</option>
+          </select>
+          <button type="button" class="btn-life-area-manage" id="open-life-area-manager" title="Настроить сферы">⚙</button>
+        </div>
+
+        <label id="due-date-label">Срок</label>
+        <input type="date" id="input-due-date" />
+
+        <label id="link-label">Ссылка</label>
+        <input type="url" id="input-link" placeholder="https://..." />
+
+        <label>Дата начала</label>
+        <input type="date" id="input-start-date" />
+
+        <label id="status-label">Статус</label>
+        <div class="status-btns" id="status-btns">
+          <button class="status-btn active" data-status="not_started">Не начато</button>
+          <button class="status-btn" data-status="in_progress">В процессе</button>
+          <button class="status-btn" data-status="paused">Пауза</button>
+          <button class="status-btn" data-status="done">Выполнено</button>
+        </div>
+
+        <label id="metric-label">Метрика успеха</label>
+        <input type="text" id="input-metric" placeholder="Например: пробежать 5 км, прочитать 3 книги..." />
+
+        <label id="priority-label">Приоритет</label>
+        <div class="priority-btns">
+          <button class="priority-btn active" data-priority="normal">Обычный</button>
+          <button class="priority-btn" data-priority="medium">Важный</button>
+          <button class="priority-btn" data-priority="high">Срочный</button>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-cancel" id="modal-cancel">Отмена</button>
+        <button class="btn-save" id="modal-save">Сохранить</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Модалка: новая заметка в Obsidian -->
+  <div class="modal-overlay hidden" id="obs-modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Новая заметка в Obsidian</h2>
+        <button class="modal-close" id="obs-modal-close">✕</button>
+      </div>
+      <div class="modal-body">
+        <label>Название файла</label>
+        <input type="text" id="obs-input-name" placeholder="Название заметки..." />
+        <label>Содержимое</label>
+        <textarea id="obs-input-content" placeholder="Текст заметки (Markdown)..." style="min-height:160px"></textarea>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-cancel" id="obs-modal-cancel">Отмена</button>
+        <button class="btn-save" id="obs-modal-save">Создать файл</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Модалка: анализ vault'а -->
+  <div class="modal-overlay hidden" id="analyze-modal-overlay">
+    <div class="modal analyze-modal">
+      <div class="modal-header">
+        <h2>🔍 Анализ заметок</h2>
+        <button class="modal-close" id="analyze-modal-close">✕</button>
+      </div>
+      <div class="analyze-body" id="analyze-body">
+        <div class="analyze-loading">Анализирую заметки...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Менеджер категорий -->
+  <div class="modal-overlay hidden" id="cat-manager-overlay">
+    <div class="modal cat-manager-modal">
+      <div class="modal-header">
+        <h2>⚙ Категории</h2>
+        <button class="modal-close" id="cat-manager-close">✕</button>
+      </div>
+      <div class="cat-manager-body">
+        <div class="cat-add-row">
+          <input type="text" id="cat-new-input" placeholder="Новая категория..." />
+          <button class="btn-save" id="cat-add-btn">Добавить</button>
+        </div>
+        <div id="cat-list" class="cat-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Менеджер сфер жизни -->
+  <div class="modal-overlay hidden" id="life-area-manager-overlay">
+    <div class="modal cat-manager-modal">
+      <div class="modal-header">
+        <h2>⚙ Сферы жизни</h2>
+        <button class="modal-close" id="life-area-manager-close">✕</button>
+      </div>
+      <div class="cat-manager-body">
+        <div class="cat-add-row">
+          <input type="text" id="life-area-new-input" placeholder="Новая сфера жизни..." />
+          <button class="btn-save" id="life-area-add-btn">Добавить</button>
+        </div>
+        <div id="life-area-list" class="cat-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Auth screen overlay -->
+  <div id="auth-screen" class="auth-screen hidden">
+    <div class="auth-card">
+      <div class="auth-logo"><span class="logo-dot"></span></div>
+      <h2 class="auth-title">Мой мир</h2>
+      <p class="auth-subtitle">Войди, чтобы твои данные сохранялись в облаке и были доступны с любого устройства</p>
+      <button class="auth-google-btn" onclick="googleSignIn()">
+        <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+        Войти через Google
+      </button>
+      <p class="auth-skip">или <button class="auth-skip-btn" onclick="authSkip()">продолжить без входа</button></p>
+    </div>
+  </div>
+
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="telegram.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script type="module" src="firebase.js"></script>
+  <script src="app.js"></script>
+  <script src="obsidian.js"></script>
+  <script src="analyze.js"></script>
+</body>
+</html>
